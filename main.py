@@ -1,43 +1,51 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from typing import List
 
-from models import Task, TaskCreate
+from . import models, database
+from sqlalchemy.orm import Session
 
 app = FastAPI()
 
-# A simple in memory task storage
-tasks = []
-task_id_counter = 0
+# Dependency to get the database session
+def get_db(db: Session = Depends(database.get_db)):
+    return db
 
-@app.post("/tasks/", response_model=Task, status_code=201) # Defines a POST request handeler for the task endpoint used for creating new tasks"""
-async def create_task(task: TaskCreate):
-	global task_id_counter
-	task_id_counter += 1
-	new_task = Task(id=task_id_counter, **task.model_dump())
-	tasks.append(new_task)
-	return new_task
+@app.post("/tasks/", response_model=models.Task, status_code=201)
+async def create_task(task: models.TaskCreate, db: Session = Depends(get_db)):
+    db_task = database.TaskDB(**task.model_dump())
+    db.add(db_task)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
 
-@app.get("/tasks/", response_model=List[Task]) # Defines GET request for the endpoint used for retriving all tasks
-async def read_tasks():
-	return tasks
+@app.get("/tasks/", response_model=List[models.Task])
+async def read_tasks(db: Session = Depends(get_db)):
+    tasks = db.query(database.TaskDB).all()
+    return tasks
 
-@app.get("/tasks/{task_id}", response_model=Task) # Defines GET request for the endpoint used for retriving all tasks
-async def read_task(task_id: int):
-	for task in tasks:
-		return task
-	raise HTTPException(status_code=404, detail="Task not found")
+@app.get("/tasks/{task_id}", response_model=models.Task)
+async def read_task(task_id: int, db: Session = Depends(get_db)):
+    db_task = db.query(database.TaskDB).filter(database.TaskDB.id == task_id).first()
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return db_task
 
-@app.put("/tasks/{task_id}", response_model=Task) # Defines PUT request for updating an exsting task
-async def update_task(task_id: int, updated_task: TaskCreate):
-	for index, task in enumerate(tasks):
-		if task.id == task_id:
-			tasks[index] = Task(id=task_id, **updated_task.model_dump())
-			return tasks[index]
-	raise HTTPException(status_code=404, detail="Task not Found")
+@app.put("/tasks/{task_id}", response_model=models.Task)
+async def update_task(task_id: int, updated_task: models.TaskCreate, db: Session = Depends(get_db)):
+    db_task = db.query(database.TaskDB).filter(database.TaskDB.id == task_id).first()
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    for key, value in updated_task.model_dump().items():
+        setattr(db_task, key, value)
+    db.commit()
+    db.refresh(db_task)
+    return db_task
 
-@app.delete("/tasks/{task_id}", status_code=204) # Defines DELETE request for deleting a task
-async def delete_task(task_id: int):
-	for index, task in enumerate(tasks):
-		del tasks[index]
-		return
-	raise HTTPException(status_code=404, detail="Task not Found")
+@app.delete("/tasks/{task_id}", status_code=204)
+async def delete_task(task_id: int, db: Session = Depends(get_db)):
+    db_task = db.query(database.TaskDB).filter(database.TaskDB.id == task_id).first()
+    if db_task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    db.delete(db_task)
+    db.commit()
+    return
