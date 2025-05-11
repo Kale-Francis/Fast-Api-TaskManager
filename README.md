@@ -11,3 +11,6 @@ our API will have the following basic functionalities:
     *Read a specific task: Allow users to retrive details of a task by its ID.
     *Update a task: Allow users to modify the title and/or description of an existing task.
     *Delete a task: Allow users to remove a task by its ID.
+
+Our Task manager will aslo include a Databse for storage.
+Will define our Database model using SQLAlchemy.(MYSQL DATABASE).

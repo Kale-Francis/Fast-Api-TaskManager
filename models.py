@@ -9,4 +9,4 @@ class Task(BaseModel):
 	"""This model represents a task object"""
 	id: int
 	title: str
-	description: str | None = Nonne
+	description: str | None = None
