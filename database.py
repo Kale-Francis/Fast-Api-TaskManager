@@ -2,7 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "mysql+mysqlclient://root@localhost/fastapi_tasks"  # database url
+DATABASE_URL = "mysql+pymysql://root:StrongPassword123!@localhost/fastapi_tasks"
 
 engine = create_engine(DATABASE_URL) # sqlalchemy engine
 
@@ -13,7 +13,7 @@ class TaskDB(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(255))
-    description = Column(String(255), nullbase=True)
+    description = Column(String(255), nullable=True)
 
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
